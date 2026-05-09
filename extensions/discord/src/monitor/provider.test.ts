@@ -783,7 +783,7 @@ describe("monitorDiscordProvider", () => {
     expect("listenerTimeoutMs" in (params ?? {})).toBe(false);
   });
 
-  it("ignores legacy inbound worker timeout config", async () => {
+  it("passes configured inbound worker timeout into the message run queue", async () => {
     resolveDiscordAccountMock.mockReturnValue({
       accountId: "default",
       token: "MTIz.abc.def",
@@ -804,7 +804,7 @@ describe("monitorDiscordProvider", () => {
     const params = getFirstDiscordMessageHandlerParams<{
       workerRunTimeoutMs?: number;
     }>();
-    expect(params?.workerRunTimeoutMs).toBeUndefined();
+    expect(params?.workerRunTimeoutMs).toBe(300_000);
   });
 
   it("continues startup when Discord daily slash-command create quota is exhausted", async () => {

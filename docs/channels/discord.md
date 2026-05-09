@@ -1427,18 +1427,28 @@ openclaw logs --follow
     - `Slow listener detected ...`
     - `stuck session: sessionKey=agent:...:discord:... state=processing ...`
 
+    Discord message run timeout:
+
+    - single-account: `channels.discord.inboundWorker.runTimeoutMs`
+    - multi-account: `channels.discord.accounts.<accountId>.inboundWorker.runTimeoutMs`
+    - default: `1800000` (30 minutes)
+    - set `0` to disable
+
+    This timeout covers one queued Discord agent turn. When it fires, OpenClaw aborts that turn, settles the per-session Discord queue, and allows later messages for the same Discord session to continue.
+
     Discord gateway queue knobs:
 
     - single-account: `channels.discord.eventQueue.listenerTimeout`
     - multi-account: `channels.discord.accounts.<accountId>.eventQueue.listenerTimeout`
     - this only controls Discord gateway listener work, not agent turn lifetime
 
-    Discord does not apply a channel-owned timeout to queued agent turns. Message listeners hand off immediately, and queued Discord runs preserve per-session ordering until the session/tool/runtime lifecycle completes or aborts the work.
-
 ```json5
 {
   channels: {
     discord: {
+      inboundWorker: {
+        runTimeoutMs: 1800000,
+      },
       accounts: {
         default: {
           eventQueue: {
@@ -1553,6 +1563,7 @@ Primary reference: [Configuration reference - Discord](/gateway/config-channels#
 - gateway: `gatewayInfoTimeoutMs`, `gatewayReadyTimeoutMs`, `gatewayRuntimeReadyTimeoutMs`
 - reply/history: `replyToMode`, `historyLimit`, `dmHistoryLimit`, `dms.*.historyLimit`
 - delivery: `textChunkLimit`, `chunkMode`, `maxLinesPerMessage`
+- inbound worker: `inboundWorker.runTimeoutMs` (queued Discord message run budget)
 - streaming: `streaming` (legacy alias: `streamMode`), `streaming.preview.toolProgress`, `draftChunk`, `blockStreaming`, `blockStreamingCoalesce`
 - media/retry: `mediaMaxMb` (caps outbound Discord uploads, default `100MB`), `retry`
 - actions: `actions.*`

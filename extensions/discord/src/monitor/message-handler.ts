@@ -40,6 +40,7 @@ type DiscordMessageHandlerParams = Omit<
 > & {
   setStatus?: DiscordMonitorStatusSink;
   abortSignal?: AbortSignal;
+  workerRunTimeoutMs?: number;
   __testing?: DiscordMessageHandlerTestingHooks;
 };
 
@@ -113,6 +114,8 @@ export function createDiscordMessageHandler(
     setStatus: params.setStatus,
     abortSignal: params.abortSignal,
     replayGuard,
+    workerRunTimeoutMs:
+      params.workerRunTimeoutMs ?? params.discordConfig?.inboundWorker?.runTimeoutMs,
     __testing: params.__testing,
   });
 

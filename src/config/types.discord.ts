@@ -407,13 +407,12 @@ export type DiscordAccountConfig = {
   /** Streaming URL (Twitch/YouTube). Required when activityType=1. */
   activityUrl?: string;
   /**
-   * Legacy compatibility block. Discord no longer enforces channel-owned
-   * timeouts for queued inbound agent runs.
+   * Discord inbound agent run budget. This protects the per-session Discord
+   * message queue from one stuck turn pinning later messages forever.
    */
   inboundWorker?: {
     /**
-     * Ignored. Queued Discord agent runs are governed by the session/tool/runtime
-     * lifecycle, not by Discord channel config.
+     * Max queued Discord message run time in ms. Default: 1800000. Set 0 to disable.
      */
     runTimeoutMs?: number;
   };

@@ -1,5 +1,6 @@
-// Compatibility constants for existing imports. Discord no longer enforces
-// channel-owned listener or inbound run timeouts.
+// Discord listener handoff and inbound message runs use separate budgets:
+// listener timeout protects gateway event handling; inbound worker timeout
+// prevents one queued agent turn from permanently pinning a Discord session.
 export const DISCORD_DEFAULT_LISTENER_TIMEOUT_MS = 120_000;
 export const DISCORD_DEFAULT_INBOUND_WORKER_TIMEOUT_MS = 30 * 60_000;
 
