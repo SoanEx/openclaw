@@ -52,6 +52,12 @@ Optional settings:
 
 - `DISCORD_TEST_TIMEOUT_MS` default `180000`
 - `DISCORD_TEST_POLL_MS` default `5000`
+- `DISCORD_TEST_LOG_DIR` default `.artifacts/discord-auto-reply-test-bot`
+- `DISCORD_TEST_LOG=0` disables transcript writing
 
 On Windows networks with custom certificate inspection, prefer
 `node --use-system-ca` so Node trusts the system certificate store.
+
+The roundtrip smoke writes a JSON transcript by default. It records the test bot
+message, the matched OpenClaw reply text, message IDs, nonce, and timing. It
+does not write the bot token or unrelated channel history.

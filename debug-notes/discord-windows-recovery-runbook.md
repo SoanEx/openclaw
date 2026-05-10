@@ -25,6 +25,9 @@ personal server names, raw logs, or full local state paths.
    - Use `messages.groupChat.visibleReplies = "automatic"` when normal final
      replies should be posted without requiring the model to call the message
      tool.
+   - To make visible replies show the actual runtime model, set
+     `messages.responsePrefix = "[model: {modelFull}]"`. The `{modelFull}`
+     template is resolved after model selection, including fallback selection.
 3. Verify provider auth for both regular OpenAI and Codex runtime profiles.
    - `openclaw models status --json` should show usable auth for the selected
      provider/runtime.
@@ -82,3 +85,12 @@ to that model.
   in Discord after about 10.9 seconds.
 - Model difficulty check used one short prompt and one harder diagnostic prompt;
   both sessions selected `openai/gpt-5.5` from the current default config.
+- Visible reply model labels use `messages.responsePrefix = "[model:
+{modelFull}]"` and should be verified with a live Discord roundtrip.
+- After setting that prefix and restarting the gateway, Discord roundtrip smoke
+  passed with nonce `OC_TEST_OK_050153`; the visible reply was `[model:
+openai/gpt-5.5] OC_TEST_OK_050153`. The session transcript and trajectory for
+  the same nonce recorded provider `openai` and model `gpt-5.5`.
+- The roundtrip smoke now writes a local JSON transcript under `.artifacts` with
+  the sent test text, matched OpenClaw reply text, nonce, message IDs, and
+  timing. It does not write bot tokens or unrelated channel history.
