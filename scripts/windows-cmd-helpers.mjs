@@ -16,5 +16,9 @@ function escapeForCmdExe(arg) {
 }
 
 export function buildCmdExeCommandLine(command, args) {
-  return [escapeForCmdExe(command), ...args.map(escapeForCmdExe)].join(" ");
+  const commandLine = [escapeForCmdExe(command), ...args.map(escapeForCmdExe)].join(" ");
+  // cmd.exe /s /c strips quote handling around the command string. When the
+  // executable path is quoted, wrap the whole command line so paths under
+  // "C:\Program Files" are not split into "C:\Program".
+  return commandLine.startsWith('"') ? `"${commandLine}"` : commandLine;
 }
