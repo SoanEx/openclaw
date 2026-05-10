@@ -1,12 +1,13 @@
 ---
 name: discord-model-router
-description: Route Discord sessions across nano, mini, and GPT for task difficulty using session model overrides.
+description: Use on every Discord channel turn to route the session across nano, mini, and GPT by task difficulty using session model overrides.
 allowed-tools: ["session_status"]
 ---
 
 # Discord Model Router
 
-Use this skill only for Discord channel conversations.
+Use this skill for every Discord channel conversation. Do not use it outside
+Discord.
 
 ## Goal
 
