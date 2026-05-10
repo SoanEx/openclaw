@@ -40,7 +40,6 @@ type DiscordMessageHandlerParams = Omit<
 > & {
   setStatus?: DiscordMonitorStatusSink;
   abortSignal?: AbortSignal;
-  workerRunTimeoutMs?: number;
   __testing?: DiscordMessageHandlerTestingHooks;
 };
 
@@ -95,6 +94,158 @@ function queueAcceptedDiscordTypingCue(ctx: DiscordMessagePreflightContext): voi
   });
 }
 
+function formatElapsedMs(startedAt: number): string {
+  return ` durationMs=${Math.max(0, Date.now() - startedAt)}`;
+}
+
+function formatDiagnosticError(error: unknown): string {
+  if (error instanceof Error) {
+    return `${error.name}: ${error.message}`;
+  }
+  return String(error);
+}
+
+function describeDiscordInboundEvent(params: {
+  accountId: string;
+  data: DiscordMessageEvent;
+  replayKey?: string | null;
+  replayKeys?: readonly string[];
+}): string {
+  const channelId =
+    resolveDiscordMessageChannelId({
+      message: params.data.message,
+      eventChannelId: params.data.channel_id,
+    }) ??
+    params.data.channel_id ??
+    "unknown";
+  const messageId = params.data.message?.id ?? "unknown";
+  const details = [`account=${params.accountId}`, `channel=${channelId}`, `message=${messageId}`];
+  if (params.replayKey) {
+    details.push(`replay=${params.replayKey}`);
+  }
+  if (params.replayKeys) {
+    details.push(`replayKeys=${params.replayKeys.length}`);
+  }
+  return details.join(" ");
+}
+
+function logDiscordMessageDiagnostic(
+  runtime: DiscordMessageHandlerParams["runtime"],
+  event: string,
+  details: string,
+  extra = "",
+) {
+  try {
+    runtime.log?.(`discord message ${event}: ${details}${extra}`);
+  } catch {
+    // Diagnostic logging must not affect message processing.
+  }
+}
+
+async function runDiscordPreflightWithDiagnostics(params: {
+  runtime: DiscordMessageHandlerParams["runtime"];
+  accountId: string;
+  data: DiscordMessageEvent;
+  replayKeys: readonly string[];
+  batchSize: number;
+  run: () => Promise<DiscordMessagePreflightContext | null>;
+}): Promise<DiscordMessagePreflightContext | null> {
+  const startedAt = Date.now();
+  const details = describeDiscordInboundEvent({
+    accountId: params.accountId,
+    data: params.data,
+    replayKeys: params.replayKeys,
+  });
+  logDiscordMessageDiagnostic(
+    params.runtime,
+    "preflight start",
+    details,
+    ` batchSize=${params.batchSize}`,
+  );
+  try {
+    const ctx = await params.run();
+    logDiscordMessageDiagnostic(
+      params.runtime,
+      "preflight end",
+      details,
+      ` status=${ctx ? "accepted" : "dropped"}${ctx?.route.sessionKey ? ` session=${ctx.route.sessionKey}` : ""}${formatElapsedMs(startedAt)}`,
+    );
+    return ctx;
+  } catch (error) {
+    logDiscordMessageDiagnostic(
+      params.runtime,
+      "preflight end",
+      details,
+      ` status=error${formatElapsedMs(startedAt)} error=${formatDiagnosticError(error)}`,
+    );
+    throw error;
+  }
+}
+
+async function commitDiscordInboundReplayWithDiagnostics(params: {
+  runtime: DiscordMessageHandlerParams["runtime"];
+  accountId: string;
+  data: DiscordMessageEvent;
+  replayKeys: readonly string[];
+  replayGuard: ReturnType<typeof createDiscordInboundReplayGuard>;
+  reason: string;
+}) {
+  const details = describeDiscordInboundEvent({
+    accountId: params.accountId,
+    data: params.data,
+    replayKeys: params.replayKeys,
+  });
+  logDiscordMessageDiagnostic(
+    params.runtime,
+    "replay commit start",
+    details,
+    ` reason=${params.reason}`,
+  );
+  await commitDiscordInboundReplay({
+    replayKeys: params.replayKeys,
+    replayGuard: params.replayGuard,
+  });
+  logDiscordMessageDiagnostic(
+    params.runtime,
+    "replay commit end",
+    details,
+    ` reason=${params.reason}`,
+  );
+}
+
+function releaseDiscordInboundReplayWithDiagnostics(params: {
+  runtime: DiscordMessageHandlerParams["runtime"];
+  accountId: string;
+  data: DiscordMessageEvent;
+  replayKeys: readonly string[];
+  replayGuard: ReturnType<typeof createDiscordInboundReplayGuard>;
+  error?: unknown;
+  reason: string;
+}) {
+  const details = describeDiscordInboundEvent({
+    accountId: params.accountId,
+    data: params.data,
+    replayKeys: params.replayKeys,
+  });
+  logDiscordMessageDiagnostic(
+    params.runtime,
+    "replay release start",
+    details,
+    ` reason=${params.reason}`,
+  );
+  releaseDiscordInboundReplay({
+    replayKeys: params.replayKeys,
+    error: params.error,
+    replayGuard: params.replayGuard,
+  });
+  logDiscordMessageDiagnostic(
+    params.runtime,
+    "replay release end",
+    details,
+    ` reason=${params.reason}`,
+  );
+}
+
 export function createDiscordMessageHandler(
   params: DiscordMessageHandlerParams,
 ): DiscordMessageHandlerWithLifecycle {
@@ -114,8 +265,6 @@ export function createDiscordMessageHandler(
     setStatus: params.setStatus,
     abortSignal: params.abortSignal,
     replayGuard,
-    workerRunTimeoutMs:
-      params.workerRunTimeoutMs ?? params.discordConfig?.inboundWorker?.runTimeoutMs,
     __testing: params.__testing,
   });
 
@@ -164,10 +313,14 @@ export function createDiscordMessageHandler(
       const replayKeys = entries.map((entry) => entry.replayKey).filter(isNonEmptyString);
       const abortSignal = last.abortSignal;
       if (abortSignal?.aborted) {
-        releaseDiscordInboundReplay({
+        releaseDiscordInboundReplayWithDiagnostics({
+          runtime: params.runtime,
+          accountId: params.accountId,
+          data: last.data,
           replayKeys,
           error: abortSignal.reason,
           replayGuard,
+          reason: "flush-aborted",
         });
         return;
       }
@@ -176,16 +329,31 @@ export function createDiscordMessageHandler(
           const preflight =
             preflightDiscordMessageImpl ??
             (await loadMessagePreflightRuntime()).preflightDiscordMessage;
-          const ctx = await preflight({
-            ...params,
-            ackReactionScope,
-            groupPolicy,
-            abortSignal,
+          const ctx = await runDiscordPreflightWithDiagnostics({
+            runtime: params.runtime,
+            accountId: params.accountId,
             data: last.data,
-            client: last.client,
+            replayKeys,
+            batchSize: entries.length,
+            run: async () =>
+              await preflight({
+                ...params,
+                ackReactionScope,
+                groupPolicy,
+                abortSignal,
+                data: last.data,
+                client: last.client,
+              }),
           });
           if (!ctx) {
-            await commitDiscordInboundReplay({ replayKeys, replayGuard });
+            await commitDiscordInboundReplayWithDiagnostics({
+              runtime: params.runtime,
+              accountId: params.accountId,
+              data: last.data,
+              replayKeys,
+              replayGuard,
+              reason: "preflight-dropped",
+            });
             return;
           }
           applyImplicitReplyBatchGate(ctx, params.replyToMode, false);
@@ -226,16 +394,31 @@ export function createDiscordMessageHandler(
         const preflight =
           preflightDiscordMessageImpl ??
           (await loadMessagePreflightRuntime()).preflightDiscordMessage;
-        const ctx = await preflight({
-          ...params,
-          ackReactionScope,
-          groupPolicy,
-          abortSignal,
+        const ctx = await runDiscordPreflightWithDiagnostics({
+          runtime: params.runtime,
+          accountId: params.accountId,
           data: syntheticData,
-          client: last.client,
+          replayKeys,
+          batchSize: entries.length,
+          run: async () =>
+            await preflight({
+              ...params,
+              ackReactionScope,
+              groupPolicy,
+              abortSignal,
+              data: syntheticData,
+              client: last.client,
+            }),
         });
         if (!ctx) {
-          await commitDiscordInboundReplay({ replayKeys, replayGuard });
+          await commitDiscordInboundReplayWithDiagnostics({
+            runtime: params.runtime,
+            accountId: params.accountId,
+            data: syntheticData,
+            replayKeys,
+            replayGuard,
+            reason: "preflight-dropped",
+          });
           return;
         }
         applyImplicitReplyBatchGate(ctx, params.replyToMode, true);
@@ -256,9 +439,24 @@ export function createDiscordMessageHandler(
         messageRunQueue.enqueue(buildDiscordInboundJob(ctx, { replayKeys }));
       } catch (error) {
         if (error instanceof DiscordRetryableInboundError) {
-          releaseDiscordInboundReplay({ replayKeys, error, replayGuard });
+          releaseDiscordInboundReplayWithDiagnostics({
+            runtime: params.runtime,
+            accountId: params.accountId,
+            data: last.data,
+            replayKeys,
+            error,
+            replayGuard,
+            reason: "preflight-retryable-error",
+          });
         } else {
-          await commitDiscordInboundReplay({ replayKeys, replayGuard });
+          await commitDiscordInboundReplayWithDiagnostics({
+            runtime: params.runtime,
+            accountId: params.accountId,
+            data: last.data,
+            replayKeys,
+            replayGuard,
+            reason: "preflight-nonretryable-error",
+          });
         }
         throw error;
       }
@@ -286,12 +484,23 @@ export function createDiscordMessageHandler(
         accountId: params.accountId,
         data,
       });
-      if (
-        !(await claimDiscordInboundReplay({
-          replayKey,
-          replayGuard,
-        }))
-      ) {
+      const claimDetails = describeDiscordInboundEvent({
+        accountId: params.accountId,
+        data,
+        replayKey,
+      });
+      logDiscordMessageDiagnostic(params.runtime, "replay claim start", claimDetails);
+      const replayClaimed = await claimDiscordInboundReplay({
+        replayKey,
+        replayGuard,
+      });
+      logDiscordMessageDiagnostic(
+        params.runtime,
+        "replay claim end",
+        claimDetails,
+        ` status=${replayClaimed ? "claimed" : "duplicate"}`,
+      );
+      if (!replayClaimed) {
         return;
       }
 

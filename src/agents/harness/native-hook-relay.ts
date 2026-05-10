@@ -808,7 +808,7 @@ function ensureNativeHookRelayBridgeDir(): string {
   if (expectedUid !== undefined && stats.uid !== expectedUid) {
     throw new Error("unsafe native hook relay bridge directory owner");
   }
-  if ((stats.mode & 0o077) !== 0) {
+  if (shouldEnforceNativeHookRelayBridgePosixMode(process.platform) && (stats.mode & 0o077) !== 0) {
     chmodSync(bridgeDir, 0o700);
     const repaired = lstatSync(bridgeDir);
     if ((repaired.mode & 0o077) !== 0) {
@@ -816,6 +816,10 @@ function ensureNativeHookRelayBridgeDir(): string {
     }
   }
   return bridgeDir;
+}
+
+function shouldEnforceNativeHookRelayBridgePosixMode(platform: NodeJS.Platform): boolean {
+  return platform !== "win32";
 }
 
 function writeNativeHookRelayBridgeRecord(
@@ -1719,6 +1723,9 @@ export const __testing = {
   },
   getNativeHookRelayBridgeDirForTests(): string {
     return nativeHookRelayBridgeDir();
+  },
+  shouldEnforceNativeHookRelayBridgePosixModeForTests(platform: NodeJS.Platform): boolean {
+    return shouldEnforceNativeHookRelayBridgePosixMode(platform);
   },
   getNativeHookRelayBridgeRegistryPathForTests(relayId: string): string {
     return nativeHookRelayBridgeRegistryPath(relayId);

@@ -143,7 +143,6 @@ Docs: https://docs.openclaw.ai
 
 ### Fixes
 
-- Discord: bound queued message turns with the existing inbound worker timeout, clear stuck per-session queues after timeout, and add non-sensitive accepted/model/reply lifecycle logs for non-response debugging.
 - Gateway: avoid false degraded event-loop health during rapid health/readiness/status probes unless sustained load has delay co-evidence, while keeping hard delay detection immediate. (#77028) Thanks @rubencu.
 - Codex app-server: keep native hook relays alive for long-running turns so shell and file approvals stay reachable until the configured run window finishes. (#77533) Thanks @rubencu.
 - Gateway/agent: pass the session-key agent id into inline image attachment validation so the first image in a fresh per-agent session uses the agent's vision-capable model override instead of the text-only system default. Fixes #79407. Thanks @pandadev66.

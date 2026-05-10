@@ -40,6 +40,11 @@ async function waitForNativeHookRelayBridgeRecord(
 }
 
 describe("native hook relay registry", () => {
+  it("does not enforce POSIX bridge mode bits on Windows", () => {
+    expect(__testing.shouldEnforceNativeHookRelayBridgePosixModeForTests("win32")).toBe(false);
+    expect(__testing.shouldEnforceNativeHookRelayBridgePosixModeForTests("linux")).toBe(true);
+  });
+
   it("registers a short-lived relay and builds hidden CLI commands", () => {
     const relay = registerNativeHookRelay({
       provider: "codex",
@@ -62,8 +67,12 @@ describe("native hook relay registry", () => {
       runId: "run-1",
       allowedEvents: ["pre_tool_use"],
     });
+    const quotedExecutable =
+      process.platform === "win32"
+        ? '"/opt/Open Claw/openclaw.mjs"'
+        : "'/opt/Open Claw/openclaw.mjs'";
     expect(relay.commandForEvent("pre_tool_use")).toBe(
-      "/usr/local/bin/node '/opt/Open Claw/openclaw.mjs' hooks relay --provider codex --relay-id " +
+      `/usr/local/bin/node ${quotedExecutable} hooks relay --provider codex --relay-id ` +
         `${relay.relayId} --event pre_tool_use --timeout 1234`,
     );
   });
@@ -135,8 +144,10 @@ describe("native hook relay registry", () => {
     const record = await waitForNativeHookRelayBridgeRecord(relay.relayId);
     const bridgeDir = __testing.getNativeHookRelayBridgeDirForTests();
     const registryPath = __testing.getNativeHookRelayBridgeRegistryPathForTests(relay.relayId);
-    expect(statSync(bridgeDir).mode & 0o077).toBe(0);
-    expect(statSync(registryPath).mode & 0o077).toBe(0);
+    if (__testing.shouldEnforceNativeHookRelayBridgePosixModeForTests(process.platform)) {
+      expect(statSync(bridgeDir).mode & 0o077).toBe(0);
+      expect(statSync(registryPath).mode & 0o077).toBe(0);
+    }
 
     writeFileSync(
       registryPath,
@@ -759,7 +770,7 @@ describe("native hook relay registry", () => {
       expect.objectContaining({
         toolName: "apply_patch",
         params: { input: patch },
-        derivedPaths: [path.join(cwd, "src/new.ts")],
+        derivedPaths: [path.resolve(cwd, "src/new.ts")],
       }),
       expect.objectContaining({
         agentId: "agent-1",

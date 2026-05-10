@@ -113,10 +113,6 @@ export const discordChannelConfigUiHints = {
     label: "Discord Thread Parent Inheritance",
     help: "If true, Discord thread sessions inherit the parent channel transcript (default: false).",
   },
-  "inboundWorker.runTimeoutMs": {
-    label: "Discord Inbound Worker Timeout (ms)",
-    help: "Max time one queued Discord message turn can run before the Discord message queue aborts it and continues. Default is 1800000; set 0 to disable.",
-  },
   "eventQueue.listenerTimeout": {
     label: "Discord EventQueue Listener Timeout (ms)",
     help: "Canonical Discord listener timeout control in ms for gateway normalization/enqueue handlers. Default is 120000 in OpenClaw; set per account via channels.discord.accounts.<id>.eventQueue.listenerTimeout.",
