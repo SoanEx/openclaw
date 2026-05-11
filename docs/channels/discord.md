@@ -1496,6 +1496,65 @@ openclaw logs --follow
 
   </Accordion>
 
+  <Accordion title="Automated reply test bot">
+    A source checkout includes a small Discord round-trip smoke test at `scripts/discord-auto-reply-test-bot/roundtrip.mjs`. It uses a separate Discord bot to post a message in a test channel, mention the OpenClaw Discord bot, poll the channel, and write a transcript when OpenClaw posts a visible reply containing the generated nonce.
+
+    Use it when you need to prove the full visible-reply path after changing Discord config, model routing, plugin installs, or queue behavior. It verifies:
+
+    - the test bot can call Discord REST and post in the channel
+    - the OpenClaw bot receives the mentioned message
+    - the OpenClaw agent run produces a visible Discord reply
+    - the reply contains the nonce, so the response belongs to this test run
+
+    Requirements:
+
+    - a separate Discord test bot token, not the OpenClaw bot token
+    - both bots invited to the same private test channel
+    - the OpenClaw bot user ID as `OPENCLAW_DISCORD_BOT_ID`
+    - the test channel ID as `DISCORD_TEST_CHANNEL_ID`
+    - bot-authored input allowed for this private test path, usually `channels.discord.allowBots="mentions"` with strict guild/channel allowlists
+
+    PowerShell setup for a one-shell test without printing the token:
+
+```powershell
+$secret = Read-Host "Discord test bot token" -AsSecureString
+$ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secret)
+try {
+  $env:DISCORD_TEST_BOT_TOKEN = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
+} finally {
+  [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
+}
+$env:DISCORD_TEST_CHANNEL_ID = "123456789012345678"
+$env:OPENCLAW_DISCORD_BOT_ID = "234567890123456789"
+$env:DISCORD_TEST_TIMEOUT_MS = "180000"
+$env:DISCORD_TEST_POLL_MS = "5000"
+```
+
+    Run the basic round-trip:
+
+```powershell
+node --use-system-ca .\scripts\discord-auto-reply-test-bot\roundtrip.mjs "Reply exactly {nonce}"
+```
+
+    Run a capability smoke test without revealing private data:
+
+```powershell
+node --use-system-ca .\scripts\discord-auto-reply-test-bot\roundtrip.mjs "Calendar capability smoke. Do not list, reveal, or modify any calendar events. Check whether you have an actually available calendar tool. Reply exactly {nonce}:CALENDAR_OK if you can access calendar, {nonce}:CALENDAR_MISSING_TOOL if no calendar tool is available, or {nonce}:CALENDAR_NEEDS_AUTH if auth is missing."
+```
+
+    A successful run prints JSON with `ok: true`, `sentMessageId`, `replyMessageId`, `replyContent`, and `logPath`. The transcript is written under `.artifacts/discord-auto-reply-test-bot/` and contains the sent and received message content, channel ID, bot IDs, timestamps, poll count, and elapsed time. It does not contain the test bot token, but still treat transcripts as local diagnostic artifacts because they may include channel/message IDs and prompt text.
+
+    If the run times out, check in order:
+
+    - `openclaw channels status --deep --probe`
+    - OpenClaw gateway logs
+    - test bot channel permissions: View Channel, Send Messages, and Read Message History
+    - OpenClaw bot permissions and guild/channel allowlists
+    - `channels.discord.allowBots` if the test bot message was ignored
+    - visible reply policy, especially `messages.groupChat.visibleReplies`
+
+  </Accordion>
+
   <Accordion title="Bot to bot loops">
     By default bot-authored messages are ignored.
 
