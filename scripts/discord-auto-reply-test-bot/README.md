@@ -61,3 +61,36 @@ On Windows networks with custom certificate inspection, prefer
 The roundtrip smoke writes a JSON transcript by default. It records the test bot
 message, the matched OpenClaw reply text, message IDs, nonce, and timing. It
 does not write the bot token or unrelated channel history.
+
+## Local completion notices
+
+For this Windows OpenClaw test setup, future Discord/OpenClaw live tests should
+use this test bot when feasible. After a task completes, send a short test-bot
+notice that includes `@boww8234`. If the Discord user ID is known, prefer the
+resolved mention form so Discord sends an actual notification; otherwise include
+the handle text. Write completion notices in Traditional Chinese.
+
+Use `notify.mjs` for completion notices:
+
+```powershell
+$env:DISCORD_NOTICE = "@boww8234 done"
+node --use-system-ca scripts/discord-auto-reply-test-bot/notify.mjs
+```
+
+For Traditional Chinese or other non-ASCII text from Windows automation, prefer
+UTF-8 base64 input so PowerShell pipeline encoding cannot replace characters
+with question marks:
+
+```powershell
+$env:DISCORD_NOTICE_B64 = [Convert]::ToBase64String(
+  [Text.Encoding]::UTF8.GetBytes("@boww8234 已完成。")
+)
+node --use-system-ca scripts/discord-auto-reply-test-bot/notify.mjs
+```
+
+Do not pipe non-ASCII here-strings into `node --input-type=module` on Windows
+PowerShell; the native process pipeline can be lossy depending on the active
+code page.
+
+Keep the test bot token in an environment variable or local credential store.
+Do not write real bot tokens to git, docs, transcripts, or logs.

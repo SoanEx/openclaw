@@ -199,6 +199,13 @@ Telegraph style. Root rules only. Read scoped `AGENTS.md` before subtree work.
 - Mobile LAN pairing: plaintext `ws://` loopback-only. Private-network `ws://` needs `OPENCLAW_ALLOW_INSECURE_PRIVATE_WS=1`; Tailscale/public use `wss://` or tunnel.
 - A2UI hash `extensions/canvas/src/host/a2ui/.bundle.hash`: generated; ignore unless running `pnpm canvas:a2ui:bundle`; commit separately.
 
+## Discord notification workflow
+
+- Use `scripts/discord-auto-reply-test-bot/notify.mjs` after test/task completion when Discord notification is appropriate.
+- Required env: `DISCORD_BOT_TOKEN`, `DISCORD_CHANNEL_ID`. The script reads process env or repo-root `.env` via dotenv.
+- Never print, echo, cat, log, summarize, or expose the token or `.env` contents.
+- If the token is missing, report only that `DISCORD_BOT_TOKEN` is missing. Do not ask the user to paste the token into chat.
+
 ## Ops / Footguns
 
 - Remote install docs: `docs/install/{exe-dev,fly,hetzner}.md`. Parallels smoke: `$openclaw-parallels-smoke`; Discord roundtrip: `parallels-discord-roundtrip`.

@@ -51,6 +51,16 @@ personal server names, raw logs, or full local state paths.
      test sender, then mention the OpenClaw bot explicitly.
    - Run the roundtrip smoke with `node --use-system-ca` and a prompt such as
      `Reply exactly {nonce}`.
+   - Local operator preference: future Discord/OpenClaw live tests on this
+     machine should use the dedicated Discord test bot when feasible.
+   - Local completion-notice preference: after a task finishes, send a Discord
+     test-bot notice that includes `@boww8234`. Use a resolved Discord user
+     mention ID when available; otherwise include the handle text. Never write
+     the test bot token to git, docs, transcripts, or logs. Write completion
+     notices in Traditional Chinese. On Windows, send non-ASCII notices through
+     `scripts/discord-auto-reply-test-bot/notify.mjs`; for automation, prefer
+     `DISCORD_NOTICE_B64` so PowerShell pipeline encoding cannot replace
+     Traditional Chinese with question marks.
 
 ## Expected Healthy Evidence
 
