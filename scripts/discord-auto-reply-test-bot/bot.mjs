@@ -1,15 +1,17 @@
 #!/usr/bin/env node
 
+import { readDiscordEnv } from "./env.mjs";
+
 const apiBase = "https://discord.com/api/v10";
 const gatewayUrl = "wss://gateway.discord.gg/?v=10&encoding=json";
-const rawToken = (process.env.DISCORD_TEST_BOT_TOKEN ?? process.env.DISCORD_BOT_TOKEN)?.trim();
-const channelFilter = process.env.DISCORD_TEST_CHANNEL_ID?.trim();
-const guildFilter = process.env.DISCORD_TEST_GUILD_ID?.trim();
-const prefix = process.env.DISCORD_TEST_PREFIX ?? "!oc-ping";
-const replyText = process.env.DISCORD_TEST_REPLY ?? "test-bot-ok";
+const rawToken = readDiscordEnv("DISCORD_BOT_TOKEN", ["DISCORD_TEST_BOT_TOKEN"]);
+const channelFilter = readDiscordEnv("DISCORD_CHANNEL_ID", ["DISCORD_TEST_CHANNEL_ID"]);
+const guildFilter = readDiscordEnv("DISCORD_TEST_GUILD_ID");
+const prefix = readDiscordEnv("DISCORD_TEST_PREFIX") ?? "!oc-ping";
+const replyText = readDiscordEnv("DISCORD_TEST_REPLY") ?? "test-bot-ok";
 
 if (!rawToken) {
-  console.error("Set DISCORD_TEST_BOT_TOKEN before starting the test bot.");
+  console.error("Set DISCORD_BOT_TOKEN before starting the test bot.");
   process.exit(1);
 }
 

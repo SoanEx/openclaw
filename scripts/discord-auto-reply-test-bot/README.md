@@ -8,9 +8,15 @@ delivery and bot permissions are working outside the OpenClaw gateway.
 
 ## Run on Windows PowerShell
 
+The scripts prefer repo-root `.env` values over inherited shell environment
+variables, then fall back to process env. Use these generic names in `.env`:
+
+```text
+DISCORD_BOT_TOKEN=YOUR_TEST_BOT_TOKEN
+DISCORD_CHANNEL_ID=123456789012345678
+```
+
 ```powershell
-$env:DISCORD_TEST_BOT_TOKEN = "YOUR_TEST_BOT_TOKEN"
-$env:DISCORD_TEST_CHANNEL_ID = "123456789012345678"
 $env:DISCORD_TEST_PREFIX = "!oc-ping"
 $env:DISCORD_TEST_REPLY = "test-bot-ok"
 node scripts/discord-auto-reply-test-bot/bot.mjs
@@ -22,9 +28,9 @@ Then send this in the configured Discord channel:
 !oc-ping
 ```
 
-The bot replies to the triggering message. Leave `DISCORD_TEST_CHANNEL_ID`
-unset to allow any channel the bot can read. Set `DISCORD_TEST_PREFIX` to an
-empty string to reply to every non-bot message.
+The bot replies to the triggering message. Leave `DISCORD_CHANNEL_ID` and
+`DISCORD_TEST_CHANNEL_ID` unset to allow any channel the bot can read. Set
+`DISCORD_TEST_PREFIX` to an empty string to reply to every non-bot message.
 
 ## Required Discord Settings
 
@@ -42,8 +48,6 @@ into the prompt, polls recent channel messages, and exits non-zero if OpenClaw
 does not reply with the nonce before the timeout.
 
 ```powershell
-$env:DISCORD_TEST_BOT_TOKEN = "YOUR_TEST_BOT_TOKEN"
-$env:DISCORD_TEST_CHANNEL_ID = "123456789012345678"
 $env:OPENCLAW_DISCORD_BOT_ID = "234567890123456789"
 node --use-system-ca scripts/discord-auto-reply-test-bot/roundtrip.mjs "Reply exactly {nonce}"
 ```
@@ -83,7 +87,7 @@ with question marks:
 
 ```powershell
 $env:DISCORD_NOTICE_B64 = [Convert]::ToBase64String(
-  [Text.Encoding]::UTF8.GetBytes("@boww8234 已完成。")
+  [Text.Encoding]::UTF8.GetBytes("@boww8234 測試通知完成")
 )
 node --use-system-ca scripts/discord-auto-reply-test-bot/notify.mjs
 ```
@@ -92,5 +96,6 @@ Do not pipe non-ASCII here-strings into `node --input-type=module` on Windows
 PowerShell; the native process pipeline can be lossy depending on the active
 code page.
 
-Keep the test bot token in an environment variable or local credential store.
-Do not write real bot tokens to git, docs, transcripts, or logs.
+Keep the test bot token in `.env`, an environment variable, or a local
+credential store. Do not write real bot tokens to git, docs, transcripts, or
+logs.

@@ -202,7 +202,7 @@ Telegraph style. Root rules only. Read scoped `AGENTS.md` before subtree work.
 ## Discord notification workflow
 
 - Use `scripts/discord-auto-reply-test-bot/notify.mjs` after test/task completion when Discord notification is appropriate.
-- Required env: `DISCORD_BOT_TOKEN`, `DISCORD_CHANNEL_ID`. The script reads process env or repo-root `.env` via dotenv.
+- Required env: `DISCORD_BOT_TOKEN`, `DISCORD_CHANNEL_ID`. The script prefers repo-root `.env` over inherited process env, then falls back to process env.
 - Never print, echo, cat, log, summarize, or expose the token or `.env` contents.
 - If the token is missing, report only that `DISCORD_BOT_TOKEN` is missing. Do not ask the user to paste the token into chat.
 

@@ -1,13 +1,11 @@
 #!/usr/bin/env node
 
-import "dotenv/config";
+import { readDiscordEnv } from "./env.mjs";
 
 const apiBase = "https://discord.com/api/v10";
-const tokenRaw = (process.env.DISCORD_BOT_TOKEN ?? process.env.DISCORD_TEST_BOT_TOKEN)?.trim();
-const channelId = (process.env.DISCORD_CHANNEL_ID ?? process.env.DISCORD_TEST_CHANNEL_ID)?.trim();
-const noticeUserId = (
-  process.env.DISCORD_NOTICE_USER_ID ?? process.env.DISCORD_TEST_NOTICE_USER_ID
-)?.trim();
+const tokenRaw = readDiscordEnv("DISCORD_BOT_TOKEN", ["DISCORD_TEST_BOT_TOKEN"]);
+const channelId = readDiscordEnv("DISCORD_CHANNEL_ID", ["DISCORD_TEST_CHANNEL_ID"]);
+const noticeUserId = readDiscordEnv("DISCORD_NOTICE_USER_ID", ["DISCORD_TEST_NOTICE_USER_ID"]);
 const noticeText = resolveNoticeText();
 
 if (!tokenRaw) {
@@ -67,12 +65,10 @@ function resolveNoticeText() {
     return argvText;
   }
 
-  const base64Text = (
-    process.env.DISCORD_NOTICE_B64 ?? process.env.DISCORD_TEST_NOTICE_B64
-  )?.trim();
+  const base64Text = readDiscordEnv("DISCORD_NOTICE_B64", ["DISCORD_TEST_NOTICE_B64"])?.trim();
   if (base64Text) {
     return Buffer.from(base64Text, "base64").toString("utf8").trim();
   }
 
-  return (process.env.DISCORD_NOTICE ?? process.env.DISCORD_TEST_NOTICE)?.trim() ?? "";
+  return readDiscordEnv("DISCORD_NOTICE", ["DISCORD_TEST_NOTICE"])?.trim() ?? "";
 }

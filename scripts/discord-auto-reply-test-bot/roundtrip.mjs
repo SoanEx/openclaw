@@ -2,28 +2,29 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
+import { readDiscordEnv } from "./env.mjs";
 
 const apiBase = "https://discord.com/api/v10";
-const tokenRaw = process.env.DISCORD_TEST_BOT_TOKEN?.trim();
-const channelId = process.env.DISCORD_TEST_CHANNEL_ID?.trim();
-const openclawBotId = process.env.OPENCLAW_DISCORD_BOT_ID?.trim();
-const timeoutMs = Number.parseInt(process.env.DISCORD_TEST_TIMEOUT_MS ?? "180000", 10);
-const pollMs = Number.parseInt(process.env.DISCORD_TEST_POLL_MS ?? "5000", 10);
+const tokenRaw = readDiscordEnv("DISCORD_BOT_TOKEN", ["DISCORD_TEST_BOT_TOKEN"]);
+const channelId = readDiscordEnv("DISCORD_CHANNEL_ID", ["DISCORD_TEST_CHANNEL_ID"]);
+const openclawBotId = readDiscordEnv("OPENCLAW_DISCORD_BOT_ID");
+const timeoutMs = Number.parseInt(readDiscordEnv("DISCORD_TEST_TIMEOUT_MS") ?? "180000", 10);
+const pollMs = Number.parseInt(readDiscordEnv("DISCORD_TEST_POLL_MS") ?? "5000", 10);
 const logDir =
-  process.env.DISCORD_TEST_LOG_DIR?.trim() ||
+  readDiscordEnv("DISCORD_TEST_LOG_DIR")?.trim() ||
   path.join(".artifacts", "discord-auto-reply-test-bot");
-const shouldWriteLog = process.env.DISCORD_TEST_LOG !== "0";
+const shouldWriteLog = readDiscordEnv("DISCORD_TEST_LOG") !== "0";
 const prompt =
   process.argv.slice(2).join(" ").trim() ||
-  process.env.DISCORD_TEST_PROMPT?.trim() ||
+  readDiscordEnv("DISCORD_TEST_PROMPT")?.trim() ||
   "Reply exactly {nonce}";
 
 if (!tokenRaw) {
-  console.error("Set DISCORD_TEST_BOT_TOKEN.");
+  console.error("Set DISCORD_BOT_TOKEN.");
   process.exit(1);
 }
 if (!channelId) {
-  console.error("Set DISCORD_TEST_CHANNEL_ID.");
+  console.error("Set DISCORD_CHANNEL_ID.");
   process.exit(1);
 }
 if (!openclawBotId) {
